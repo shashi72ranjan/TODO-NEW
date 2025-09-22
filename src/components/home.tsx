@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
+import { Textarea } from "@/components/ui/textarea"; 
+import { Button } from "@/components/ui/button";
 import { Pencil, Trash2 } from "lucide-react";
-
 
 type Note = {
   id: string;
@@ -15,30 +14,34 @@ type Note = {
 
 export default function NotesPage() {
   const [notes, setNotes] = useState<Note[]>([]);
-  const [heading, setHeading] = useState("");
-  const [document, setDocument] = useState("");
+  const [content, setContent] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [warning, setWarning] = useState("");
 
-  // Load from localStorage on first render
   useEffect(() => {
     const saved = localStorage.getItem("notes");
     if (saved) setNotes(JSON.parse(saved));
   }, []);
 
-  // Save to localStorage whenever notes change
   useEffect(() => {
     localStorage.setItem("notes", JSON.stringify(notes));
   }, [notes]);
 
+  const parseContent = (text: string) => {
+    const [heading, ...docParts] = text.trim().split("\n");
+    const document = docParts.join("\n").trim();
+    return { heading: heading.trim(), document };
+  };
+
   const handleSubmit = () => {
-    if (!heading.trim() || !document.trim()) {
-      setWarning("⚠️ Both heading and document are required!");
+    const { heading, document } = parseContent(content);
+
+    if (!heading || !document) {
+      setWarning("⚠️ First line should be heading, rest is the document.");
       return;
     }
 
     if (editingId) {
-      // Update note
       setNotes((prev) =>
         prev.map((n) =>
           n.id === editingId ? { ...n, heading, document } : n
@@ -46,7 +49,6 @@ export default function NotesPage() {
       );
       setEditingId(null);
     } else {
-      // Add new note
       const newNote: Note = {
         id: Date.now().toString(),
         heading,
@@ -56,15 +58,12 @@ export default function NotesPage() {
       setNotes((prev) => [...prev, newNote]);
     }
 
-    // Reset fields
-    setHeading("");
-    setDocument("");
+    setContent("");
     setWarning("");
   };
 
   const handleEdit = (id: string, currentHeading: string, currentDoc: string) => {
-    setHeading(currentHeading);
-    setDocument(currentDoc);
+    setContent(`${currentHeading}\n${currentDoc}`);
     setEditingId(id);
     setWarning("");
   };
@@ -73,36 +72,29 @@ export default function NotesPage() {
     setNotes((prev) => prev.filter((n) => n.id !== id));
   };
 
-  
-
-  const isFormValid = heading.trim() !== "" && document.trim() !== "";
+  const { heading, document } = parseContent(content);
+  const isFormValid = heading !== "" && document !== "";
 
   return (
     <main className="p-6 space-y-6 max-w-2xl mx-auto">
-      <h1 className="text-4xl font-bold group cursor-pointer inline-block"> <span className="bg-gradient-to-r from-purple-600 to-blue-600 bg-[length:0%_2px] bg-left-bottom bg-no-repeat transition-[background-size] duration-500 ease-out group-hover:bg-[length:100%_2px]">MY TODO</span></h1>
-
       {/* Form */}
       <div className="space-y-2">
-        <Input  type="text"
-         placeholder="Heading"
-           value={heading}
-          onChange={(e) => setHeading(e.target.value)}
- />
-        <Input
-          className="border p-2 rounded w-full"
-          placeholder="Document"
-          value={document}
-          onChange={(e) => setDocument(e.target.value)}
+        <Textarea
+          placeholder="heading
+            document"
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          rows={6}
         />
-
         {warning && <p className="text-red-600">{warning}</p>}
-
-        {isFormValid && (
-          <Button variant="destructive" 
-           onClick={handleSubmit}
->           {editingId ? "Update Note" : "Add Note"}
-             </Button>
-        )}
+        <Button
+          variant="destructive"
+          onClick={handleSubmit}
+          disabled={!isFormValid}
+          className={!isFormValid ? "opacity-50 cursor-not-allowed" : ""}
+        >
+          {editingId ? "Update Note" : "Add Note"}
+        </Button>
       </div>
 
       {/* Notes List */}
@@ -121,16 +113,14 @@ export default function NotesPage() {
                 className="bg-yellow-500 text-white px-3 py-1 rounded"
                 onClick={() => handleEdit(note.id, note.heading, note.document)}
               >
-                <Pencil/>
+                <Pencil />
               </Button>
               <Button
                 className="bg-red-500 text-white px-3 py-1 rounded"
                 onClick={() => handleDelete(note.id)}
               >
-                <Trash2/>
+                <Trash2 />
               </Button>
-              
-              
             </div>
           </li>
         ))}
